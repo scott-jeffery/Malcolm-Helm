@@ -170,61 +170,61 @@ netbox:
     #     adminPassword: ""
 
 storage:
-  # This helm chart requires a storage provisioner class it defaults to local-path provisioner
+  # This helm chart requires a storage provisioner class it defaults to nfs-client provisioner
   # If your kuberenetes cluster has a different storage provisioner please ensure you change this name.
-  # https://github.com/rancher/local-path-provisioner
+  # https://github.com/rancher/nfs-client-provisioner
   development:
     pcap_claim:
       # The size of the claim
       size: 25Gi
       # The kubernetes storage class name
-      className: local-path
+      className: nfs-client
     zeek_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     suricata_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     config_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     runtime_logs_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_backup_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     netbox_postgres_claim:
       size: 15Gi
-      className: local-path
+      className: nfs-client
   production:
     pcap_claim:
       size: 100Gi
-      className: local-path
+      className: nfs-client
     zeek_claim:
       size: 50Gi
-      className: local-path
+      className: nfs-client
     suricata_claim:
       size: 50Gi
-      className: local-path
+      className: nfs-client
     config_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     runtime_logs_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_backup_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     netbox_postgres_claim:
       size: 15Gi
-      className: local-path
+      className: nfs-client
 
 ingress:
   # Enable this if deploying in RKE2 environment with the default nginx ingress controller

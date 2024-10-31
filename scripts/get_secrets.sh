@@ -1,5 +1,6 @@
 #!/bin/bash
-namespace="malcolm"
+#namespace="malcolm"
+namespace="scott"
 secret_file_name="malcolm_secrets.yaml"
 secret_names=$(kubectl get secret -n "$namespace" -o jsonpath='{.items[*].metadata.name}')
 
