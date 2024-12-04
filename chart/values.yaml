@@ -38,12 +38,12 @@ image:
   nginx_tag: ""
 
 auth:
-  username: vagrant
+  username: malcolm
   # Generated with the openssl passwd -1 <your password>
-  openssl_password: "$1$9akV05vU$JHFoK3C2dDquTFAMoz14x/"
+  openssl_password: "$1$yaeE/Ew.$lG4fbkPzQREGMTbUO23B/0"
   # Generated with  htpasswd -bnB <your username> <your password>
-  htpass_cred: "vagrant:$2y$05$kaHZ2j2VDDQCBf9bEk1gMuJAPRs4q4rolPRbq3zXUb7j2JyGuc50a"
-  arkime_password: vagrant
+  htpass_cred: "malcolm:$2y$05$rNGLl4oPM2jV.W3fnDuaRuyua74smu2RvtaQnnDY0zlpGzoToy7WG"
+  arkime_password: malcolm
 
 opensearch:
   enabled: true
@@ -240,8 +240,8 @@ ingress:
               name: nginx-proxy
               port:
                 number: 443
-      # uncomment this line if you want to specify an ingress host with the path above
-      # host: "scottmalcolm.malcolm-655153.nein.local"
+      # uncomment this line if you want to specify an ingress hostname with the path above
+      # host: "malcolm.malcolmhost.network.local"
 
 istio:
   # Enable this if deploying in Kuberenetes environment leveraging istio service mesh
