@@ -1,6 +1,89 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require 'pathname'
+
+# Since 'vagrant up' can be called from any subdirectory in the vagrant project
+# (https://developer.hashicorp.com/vagrant/docs/vagrantfile#lookup-path)
+# We need to define a function to climb up the directory tree to find
+# the helm chart values.yaml file the way Vagrant climbs to find the Vagrantfile
+def FindHelmChartPath()
+  puts "FindHelmChartPath function called"
+
+  current_dir = Pathname.new(Dir.pwd)
+  puts "starting search in CWD: " + current_dir.to_s
+  
+  loop do
+    chart_dir = current_dir.join('chart')
+    values_file = chart_dir.join('values.yaml')
+    
+    return values_file.to_s if chart_dir.directory? && values_file.file?
+    
+    break if current_dir.root?
+    current_dir = current_dir.parent
+  end
+  
+  nil
+end
+
+# Define a function to modify the helm chart values.yaml file for Vagrant appropriate settings
+def ModifyHelmChart(values_file_path, undo)
+  puts "ModfiyHelmChart function called with param: " + undo.to_s + " and file path: " + values_file_path
+
+      puts "check file exists"
+      # Check if the file exists
+      unless File.exist?(values_file_path)
+        puts "Error: #{values_file_path} does not exist."
+        exit 1
+      end
+      
+      puts "reading the file"
+      # Read the contents of the file
+      lines = File.readlines(values_file_path)
+      
+      puts "Finding the USE_VAGRANT_CONFIG line"
+      # Find the line containing "USE_VAGRANT_CONFIG=False"
+      target_line_index = lines.index { |line| line.strip == "USE_VAGRANT_CONFIG=False" }
+      
+      if target_line_index.nil?
+        puts "Error: The line 'USE_VAGRANT_CONFIG=False' was not found in #{values_file_path}."
+        exit 1
+      end
+      
+      puts "Updating the line"
+      # Update the line
+      lines[target_line_index] = "USE_VAGRANT_CONFIG=True\n"
+      
+      puts "Writing file changes"
+      # Write the updated contents back to the file
+      File.open(values_file_path, 'w') do |file|
+        file.puts(lines)
+      end
+      
+      puts "Successfully updated #{file_path}. 'USE_VAGRANT_CONFIG' is now set to True."
+end
+
+# Default behavior is to modify the helm chart values.yaml file for Vagrant appropriate settings
+# (e.g. vagrant:vagrant as the default user and password, malcolm namespace, etc.)
+# If you need to disable this behavior set an environment variable MODIFY_HELM_CHART=False when running vagrant up
+# (e.g. run "MODIFY_HELM_CHART=False vagrant up")
+helm_env_var = (ENV["MODIFY_HELM_CHART"].nil? ? "unset" : ENV["MODIFY_HELM_CHART"]).downcase # convert nil to "unset" to avoid .downcase on nil error
+if (helm_env_var != "false" && helm_env_var != "no" && helm_env_var != "n")
+  puts "Modifying Helm chart values.yaml for Vagrant configuration"
+  values_file_path = FindHelmChartPath() # traverse up the tree looking for chart/values.yaml
+  if values_file_path
+    ModifyHelmChart(values_file_path, true)
+  else  
+    puts "WARNING: Unable to locate Helm chart values.yaml file. Skipping Vagrant configuration modifications."
+  end
+else
+  puts "Skipping Helm chart modify due to MODIFY_HELM_CHART environment variable directive"
+end
+exit(1)
+
+
+
+###### Begin Vagrant configure section ######
 Vagrant.require_version ">= 2.3.7"
 Vagrant.configure("2") do |config|
   script_choice = ENV['VAGRANT_SETUP_CHOICE'] || 'none'
@@ -22,7 +105,8 @@ Vagrant.configure("2") do |config|
     vb.gui = true
     # Customize the amount of memory on the VM:
     vb.name = "Malcolm-Helm"
-    vb.memory = "16192"
+    # VCM vb.memory = "16192"
+    vb.memory = "32768"
     vb.cpus = 8
   end
 
