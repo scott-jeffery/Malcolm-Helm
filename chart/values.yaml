@@ -3,6 +3,7 @@
 # resources vs a production one.
 is_production: false
 enable_network_policies: false
+use_vagrant_config: false
 
 # When scaling the _helpers.tpl function that is used for scaling out nodes will do a calculation based on this label
 # Basically it will count the total number of nodes that have this label

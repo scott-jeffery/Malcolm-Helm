@@ -30,37 +30,49 @@ end
 def ModifyHelmChart(values_file_path, undo)
   puts "ModfiyHelmChart function called with param: " + undo.to_s + " and file path: " + values_file_path
 
-      puts "check file exists"
-      # Check if the file exists
-      unless File.exist?(values_file_path)
-        puts "Error: #{values_file_path} does not exist."
-        exit 1
-      end
-      
-      puts "reading the file"
-      # Read the contents of the file
-      lines = File.readlines(values_file_path)
-      
-      puts "Finding the USE_VAGRANT_CONFIG line"
-      # Find the line containing "USE_VAGRANT_CONFIG=False"
-      target_line_index = lines.index { |line| line.strip == "USE_VAGRANT_CONFIG=False" }
-      
-      if target_line_index.nil?
-        puts "Error: The line 'USE_VAGRANT_CONFIG=False' was not found in #{values_file_path}."
-        exit 1
-      end
-      
-      puts "Updating the line"
-      # Update the line
-      lines[target_line_index] = "USE_VAGRANT_CONFIG=True\n"
-      
-      puts "Writing file changes"
-      # Write the updated contents back to the file
-      File.open(values_file_path, 'w') do |file|
-        file.puts(lines)
-      end
-      
-      puts "Successfully updated #{file_path}. 'USE_VAGRANT_CONFIG' is now set to True."
+  puts "check file exists"
+  # Check if the file exists
+  unless File.exist?(values_file_path)
+    puts "Error: #{values_file_path} does not exist."
+    exit 1
+  end
+  
+  puts "reading the file"
+  # Read the contents of the file
+  lines = File.readlines(values_file_path)
+  
+  puts "Finding the use_vagrant_config line"
+  # Find the line containing "use_vagrant_config: false"
+  #target_line_index = lines.index { |line| line.strip == "use_vagrant_config: false" }
+  target_line_index = lines.index { |line| line.strip.start_with?("use_vagrant_config:") }
+  puts "target line index: #{target_line_index}"
+  puts "target line is: #{lines[target_line_index]}"
+  puts "target line strip is: #{lines[target_line_index].strip.downcase}"
+  
+  if target_line_index.nil?
+    puts "Error: The line 'use_vagrant_config=' was not found in #{values_file_path}."
+    exit 1
+  elsif (lines[target_line_index].strip.downcase.end_with?("true")) #is the value already true?
+    puts "#{values_file_path} is already set for use_vagrant_config: true. Skipping modification"
+  else
+    puts "Updating the line"
+    # Update the line
+    lines[target_line_index] = "use_vagrant_config: true\n"
+    
+    puts "Writing changes to temp file"
+    # Write the updated contents back to a temp file
+    File.open(values_file_path + ".Vagrant_Modified", 'w') do |file|
+      file.puts(lines)
+    end 
+
+    # Move the original values.yaml to values.yaml.backup
+    File.rename(values_file_path, values_file_path + ".backup")
+
+    # Move the temp file to values.yaml
+    File.rename(values_file_path + ".Vagrant_Modified", values_file_path)
+
+    puts "Successfully updated #{values_file_path}. 'use_vagrant_config' is now set to True."
+  end
 end
 
 # Default behavior is to modify the helm chart values.yaml file for Vagrant appropriate settings
