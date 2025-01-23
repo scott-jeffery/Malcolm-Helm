@@ -63,25 +63,7 @@ def ModifyHelmChart(values_file_path)
   end
 end
 
-# Default behavior is to modify the helm chart values.yaml file for Vagrant appropriate settings
-# (e.g. vagrant:vagrant as the default user and password, malcolm namespace, etc.)
-# If you need to disable this behavior set an environment variable MODIFY_HELM_CHART=False when running vagrant up
-# (e.g. run "MODIFY_HELM_CHART=False vagrant up")
-helm_env_var = (ENV["MODIFY_HELM_CHART"].nil? ? "unset" : ENV["MODIFY_HELM_CHART"]).downcase # convert nil to "unset" to avoid .downcase on nil error
-if (ARGV[0] == "up" && helm_env_var != "false" && helm_env_var != "no" && helm_env_var != "n")
-  puts "Attempting to modify Helm chart values.yaml for Vagrant configuration"
-  values_file_path = FindHelmChartPath() # traverse up the tree looking for chart/values.yaml
-  if values_file_path
-    puts "Found Helm Chart values.yaml file at: " + values_file_path
-    ModifyHelmChart(values_file_path)
-  else  
-    puts "WARNING: Unable to locate Helm chart values.yaml file. Skipping Vagrant configuration modifications."
-  end
-else
-  if ARGV[0] == "up"
-    puts "Skipping Helm chart modify due to MODIFY_HELM_CHART environment variable directive"
-  end
-end
+
 
 
 ###### Begin Vagrant configure section ######
@@ -90,6 +72,63 @@ Vagrant.configure("2") do |config|
   script_choice = ENV['VAGRANT_SETUP_CHOICE'] || 'none'
   config.vm.box = "ubuntu/jammy64"
   config.disksize.size = '500GB'
+
+  config.trigger.before :up do |trigger|
+    trigger.info = "Modify Helm Chart values.yaml for Vagrant environment"
+    trigger.ruby do |env, machine|
+      # Default behavior is to modify the helm chart values.yaml file for Vagrant appropriate settings
+      # (e.g. vagrant:vagrant as the default user and password, malcolm namespace, etc.)
+      # If you need to disable this behavior set an environment variable MODIFY_HELM_CHART=False when running vagrant up
+      # (e.g. run "MODIFY_HELM_CHART=False vagrant up")
+      helm_env_var = (ENV["MODIFY_HELM_CHART"].nil? ? "unset" : ENV["MODIFY_HELM_CHART"]).downcase # convert nil to "unset" to avoid .downcase on nil error
+      if (helm_env_var != "false" && helm_env_var != "no" && helm_env_var != "n")
+        puts "Attempting to modify Helm chart values.yaml for Vagrant configuration"
+        values_file_path = FindHelmChartPath() # traverse up the tree looking for chart/values.yaml
+        if values_file_path
+          puts "Found Helm Chart values.yaml file at: " + values_file_path
+          ModifyHelmChart(values_file_path)
+        else  
+          puts "WARNING: Unable to locate Helm chart values.yaml file. Skipping Vagrant configuration modifications."
+        end
+      else
+          puts "Skipping Helm chart modify due to MODIFY_HELM_CHART environment variable directive"
+      end
+    end
+  end
+
+
+  config.trigger.after :up do |trigger|
+    trigger.info = "Revert Helm Chart values.yaml modification"
+    trigger.ruby do |env, machine|
+      # Only attempt to restore the original Helm Chart values.yaml from backup
+      # if the MODIFY_HELM_CHART environment variable isn't set to false, no, n
+      helm_env_var = (ENV["MODIFY_HELM_CHART"].nil? ? "unset" : ENV["MODIFY_HELM_CHART"]).downcase # convert nil to "unset" to avoid .downcase on nil error
+      if (helm_env_var != "false" && helm_env_var != "no" && helm_env_var != "n")
+        # Clean up temporary values.yaml file changes if any occurred.
+        puts "Checking for values.yaml.vfbackup"
+        # Traverse up the tree looking for chart/values.yaml again 
+        # just in case anything changed during vagrant up.
+        values_file_path = FindHelmChartPath() 
+        if values_file_path
+          if File.exist?(values_file_path + ".vfbackup")
+            puts "values.yaml.vfbackup file exists. Restoring original backup."
+            
+            # delete the recently modified values.yaml file
+            File.delete(values_file_path)
+
+            # rename the vfbackup file back to values.yaml
+            File.rename(values_file_path + ".vfbackup", values_file_path)
+          else
+            puts "No .vfbackup file found. Skipping original file restore."
+          end
+        else 
+          puts "WARNING: Unable to locate Helm chart values.yaml file. Skipping Helm Chart original file restore."
+        end
+      else
+          puts "Skipping Helm chart restore due to MODIFY_HELM_CHART environment variable directive"
+      end
+    end 
+  end
 
   # NIC 1: Static IP with port forwarding
   if script_choice == 'use_istio'
@@ -235,33 +274,5 @@ Vagrant.configure("2") do |config|
   end
 end
 
-# Only attempt to restore the original Helm Chart values.yaml from backup
-# if running 'vagrant up' and the environment variable isn't set to false, no, n
-# Naote: this code runs before vagrant starts provisioning the VM despite being below Vagrant.configure()
-if (ARGV[0] == "up" && helm_env_var != "false" && helm_env_var != "no" && helm_env_var != "n")
-  # Clean up temporary values.yaml file changes if any occurred.
-  puts "Checking for values.yaml.vfbackup"
-  # Traverse up the tree looking for chart/values.yaml again 
-  # just in case anything changed during vagrant up.
-  values_file_path = FindHelmChartPath() 
-  if values_file_path
-    if File.exist?(values_file_path + ".vfbackup")
-      puts "values.yaml.vfbackup file exists. Restoring original backup."
-      
-      # delete the recently modified values.yaml file
-      File.delete(values_file_path)
 
-      # rename the vfbackup file back to values.yaml
-      File.rename(values_file_path + ".vfbackup", values_file_path)
-    else
-      puts "No .vfbackup file found. Skipping original file restore."
-    end
-  else 
-    puts "WARNING: Unable to locate Helm chart values.yaml file. Skipping Helm Chart original file restore."
-  end
-else
-  if ARGV[0] == "up" 
-    puts "Skipping Helm chart restore due to MODIFY_HELM_CHART environment variable directive"
-  end
-end
 
