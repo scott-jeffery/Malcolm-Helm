@@ -97,7 +97,7 @@ Vagrant.configure("2") do |config|
   end
 
 
-  config.trigger.after :up do |trigger|
+  config.trigger.after :destroy do |trigger|
     trigger.info = "Revert Helm Chart values.yaml modification"
     trigger.ruby do |env, machine|
       # Only attempt to restore the original Helm Chart values.yaml from backup
