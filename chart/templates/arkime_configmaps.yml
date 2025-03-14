@@ -42,7 +42,7 @@ data:
 kind: ConfigMap
 metadata:
   name: arkime-rules
-  #namespace: malcolm
+  namespace: {{ .Release.Namespace }}
 
 ---
 apiVersion: v1

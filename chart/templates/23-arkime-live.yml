@@ -5,7 +5,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: arkime-live-daemonset
-  #namespace: malcolm
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
