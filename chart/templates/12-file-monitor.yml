@@ -1,3 +1,5 @@
+{{- $file_monitor_image := .Values.image.file_monitor_container_override | default (printf "%s/file-monitor:%s" .Values.image.repository .Chart.AppVersion) }}
+{{- $dirinit_image := .Values.image.dirinit_container_override | default (printf "%s/dirinit:%s" .Values.image.repository .Chart.AppVersion) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -18,6 +20,12 @@ spec:
     - port: 3310
       protocol: TCP
       name: clamav
+    - port: 5987
+      protocol: TCP
+      name: filetopic
+    - port: 5988
+      protocol: TCP
+      name: loggertopic
     - port: 8440
       protocol: TCP
       name: http
@@ -41,7 +49,7 @@ spec:
     spec:
       containers:
       - name: file-monitor-container
-        image: "{{ .Values.image.repository }}/file-monitor:{{ .Values.image.file_monitor_tag | default .Chart.AppVersion }}"
+        image: "{{ $file_monitor_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
         stdin: false
         tty: true
@@ -52,6 +60,12 @@ spec:
         ports:
           - name: clamav
             containerPort: 3310
+            protocol: TCP
+          - name: filetopic
+            containerPort: 5987
+            protocol: TCP
+          - name: loggertopic
+            containerPort: 5988
             protocol: TCP
           - name: http
             protocol: TCP
@@ -73,10 +87,7 @@ spec:
         livenessProbe:
           exec:
             command:
-            - supervisorctl
-            - status
-            - watcher
-            - logger
+            - /usr/local/bin/container_health.sh
           initialDelaySeconds: 60
           periodSeconds: 30
           timeoutSeconds: 15
@@ -95,7 +106,7 @@ spec:
             name: file-monitor-yara-rules-custom-volume
       initContainers:
       - name: file-monitor-live-dirinit-container
-        image: "{{ .Values.image.repository }}/dirinit:{{ .Values.image.dirinit_tag | default .Chart.AppVersion }}"
+        image: "{{ $dirinit_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
         stdin: false
         tty: true

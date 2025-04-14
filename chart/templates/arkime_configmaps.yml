@@ -104,9 +104,10 @@ metadata:
 
 ---
 apiVersion: v1
-data:
-  MAXMIND_GEOIP_DB_LICENSE_KEY: MA==
-  ARKIME_PASSWORD_SECRET: "{{ .Values.auth.arkime_password | b64enc }}"
+stringData:
+  MAXMIND_GEOIP_DB_LICENSE_KEY: "{{ .Values.maxmind.license_key }}"
+  MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL: "{{ .Values.maxmind.alternate_url }}"
+  ARKIME_PASSWORD_SECRET: "{{ .Values.auth.arkime_password }}"
 kind: Secret
 metadata:
   name: arkime-secret-env
@@ -169,10 +170,12 @@ metadata:
 data:
   command_override.sh: |
     #!/bin/bash
-    sed -i 's/NODE_NAME=${PCAP_NODE_NAME:-"malcolm"}-live/NODE_NAME=${PCAP_NODE_NAME}/' /opt/live_capture.sh
-    sed -i 's/NODE_HOST=${ARKIME_LIVE_NODE_HOST:-""}/NODE_HOST=${NODE_NAME}/' /opt/live_capture.sh
-    /usr/bin/tini -- /usr/local/bin/docker-uid-gid-setup.sh /usr/local/bin/service_check_passthrough.sh -s arkime /opt/docker_entrypoint.sh
-    /usr/bin/supervisord -c /etc/supervisord.conf -n
+    sed -i 's/NODE_NAME=${PCAP_NODE_NAME:-"malcolm"}-live/NODE_NAME=${PCAP_NODE_NAME}/' /usr/local/bin/live_capture.sh
+    sed -i 's/NODE_HOST=${ARKIME_LIVE_NODE_HOST:-""}/NODE_HOST=${NODE_NAME}/' /usr/local/bin/live_capture.sh
+    /usr/bin/tini -s -- /usr/local/bin/docker-uid-gid-setup.sh \
+      /usr/local/bin/service_check_passthrough.sh -s arkime \
+      /usr/local/bin/docker_entrypoint.sh \
+      /usr/bin/supervisord -c /etc/supervisord.conf -n
 ---
 apiVersion: v1
 kind: ConfigMap
