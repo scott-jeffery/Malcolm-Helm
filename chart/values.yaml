@@ -184,53 +184,53 @@ storage:
       # The size of the claim
       size: 25Gi
       # The kubernetes storage class name
-      className: local-path
+      className: nfs-client
     zeek_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     suricata_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     config_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     runtime_logs_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_backup_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     netbox_postgres_claim:
       size: 15Gi
-      className: local-path
+      className: nfs-client
   production:
     pcap_claim:
       size: 100Gi
-      className: local-path
+      className: nfs-client
     zeek_claim:
       size: 50Gi
-      className: local-path
+      className: nfs-client
     suricata_claim:
       size: 50Gi
-      className: local-path
+      className: nfs-client
     config_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     runtime_logs_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     opensearch_backup_claim:
       size: 25Gi
-      className: local-path
+      className: nfs-client
     netbox_postgres_claim:
       size: 15Gi
-      className: local-path
+      className: nfs-client
 
 ingress:
   # Enable this to use the default nginx ingress controller
