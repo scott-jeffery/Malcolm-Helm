@@ -3,9 +3,9 @@ entries:
   malcolm:
   - apiVersion: v2
     appVersion: 25.12.0
-    created: "2025-12-05T10:35:59.193733971-07:00"
+    created: "2026-01-15T09:04:12.644101395-07:00"
     description: A Helm chart for Deploying Malcolm in Kubernetes
-    digest: 4fb4b45904768199dada45386794fc3eaa67a1d4fb512a9efc0c13dbaead86c3
+    digest: 1859cbbca1c954d7f482dfcd5d7f3d335fd44baa6dc90a4a72e9c8e03ab521c2
     name: malcolm
     type: application
     urls:
@@ -13,7 +13,7 @@ entries:
     version: 25.12.0
   - apiVersion: v2
     appVersion: 25.11.0
-    created: "2025-12-05T10:35:59.191693568-07:00"
+    created: "2026-01-15T09:04:12.642127971-07:00"
     description: A Helm chart for Deploying Malcolm in Kubernetes
     digest: 554e625c59fbb097dc1fbd41ef3f106a5567e0fa9f95dd5cae19d34524417656
     name: malcolm
@@ -23,7 +23,7 @@ entries:
     version: 25.11.0
   - apiVersion: v2
     appVersion: 25.09.0
-    created: "2025-12-05T10:35:59.195648485-07:00"
+    created: "2026-01-15T09:04:12.646762026-07:00"
     description: A Helm chart for Deploying Malcolm in Kubernetes
     digest: 6ed6fc83ed52bb50a702eb7c9aa78ee8c5d53c6f50567a4c6dc6f1d7f73e03b7
     name: malcolm
@@ -31,4 +31,4 @@ entries:
     urls:
     - malcolm-25.x.x/malcolm-25.9.0.tgz
     version: 25.9.0
-generated: "2025-12-05T10:35:59.188008443-07:00"
+generated: "2026-01-15T09:04:12.640130126-07:00"
