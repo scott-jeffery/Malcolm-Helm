@@ -92,36 +92,13 @@ kind: ConfigMap
 metadata:
   name: arkime-env
 
----
-{{- $arkime_secret_existing := (lookup "v1" "Secret" .Release.Namespace "arkime-secret-env") -}}
-{{- $arkime_hash_password := "" -}}
-{{- if .Values.auth.arkime_password -}}
-  {{- $arkime_hash_password = .Values.auth.arkime_password -}}
-{{- else if $arkime_secret_existing -}}
-  {{- $arkime_hash_password = index $arkime_secret_existing.data "ARKIME_PASSWORD_SECRET" | b64dec -}}
-{{- else -}}
-  {{- $arkime_hash_password = randAlphaNum 32 -}}
-{{- end -}}
-apiVersion: v1
-stringData:
-  # MaxMind GeoIP database update API key
-  MAXMIND_GEOIP_DB_LICENSE_KEY: "{{ .Values.maxmind.license_key }}"
-  # Alternate download URL for MaxMind MMDB tarballs
-  MAXMIND_GEOIP_DB_ALTERNATE_DOWNLOAD_URL: "{{ .Values.maxmind.alternate_url }}"
-  # Internal password hash secret for Arkime viewer cluster (see https://arkime.com/settings#passwordSecret)
-  ARKIME_PASSWORD_SECRET: "{{ $arkime_hash_password }}"
-  # If the Arkime WISE plugin is in use, this sets the configuration PIN for the WISE GUI
-  ARKIME_WISE_CONFIG_PIN_CODE: "{{ .Values.auth.arkime_wise_pin }}"
-
-  # Used when for the Arkime WISE plugin if Arkime is performing live capture.
-  #   Supply the appropriate WISE service URL (and credentials, if needed), e.g.:
-  #   * http://arkime:8081 - for a local cluster
-  #   * https://user:password@malcolm/wise - for a remote Malcolm instance
-  ARKIME_WISE_SERVICE_URL: "http://arkime:8081"
-kind: Secret
-metadata:
-  name: arkime-secret-env
-type: Opaque
+{{- /*
+  NOTE: the arkime-secret-env Secret is intentionally NOT defined here. It contains the
+  randomly generated ARKIME_PASSWORD_SECRET hash and is created/owned by the secret-init
+  hook Job (see 00-secret-init.yml) so its value stays stable across re-renders (e.g.
+  Argo CD reconciles). An operator-supplied auth.arkime_password still takes precedence,
+  and the Job preserves any previously generated value.
+*/ -}}
 {{- if .Values.arkime_live.enabled }}
 ---
 apiVersion: v1
