@@ -7,6 +7,7 @@ data:
   ZEEK_LOG_PATH: "/zeek/live"
   ZEEK_PCAP_PROCESSOR: "false"
   ZEEK_CLUSTER_BACKEND: "ZeroMQ"
+  ZEEK_ZAM: "{{ .Values.zeek_live.zam }}"
   # Set ZEEK_DISABLE_STATS to blank to generate stats.log and capture_loss.log
   ZEEK_DISABLE_STATS: "{{ .Values.zeek_live.zeek_disable_stats }}"
   ZEEK_DISABLE_INTEL_LIVE: "{{ .Values.zeek_live.zeek_disable_intel_live }}"
@@ -86,7 +87,7 @@ spec:
            "name" "zeek-live-dirinit-container"
            "env" (list
              (dict "name" "PUSER_CHOWN" "value" "/zeek")
-             (dict "name" "PUSER_MKDIR" "value" "/config:zeek/intel/Mandiant,zeek/intel/MISP,zeek/intel/STIX;/zeek:current,extract_files/filescan,live/logs,processed,upload;/zeek-files:extract_files/filescan")
+             (dict "name" "PUSER_MKDIR" "value" "/config:zeek/intel/Mandiant,zeek/intel/Google,zeek/intel/MISP,zeek/intel/STIX;/zeek:current,extract_files/filescan,live/logs,processed,upload;/zeek-files:extract_files/filescan")
            )
            "volumeMounts" (list
              (dict "name" "zeek-intel-volume" "mountPath" "/config")
@@ -239,7 +240,7 @@ spec:
            "name" "zeek-remotesensor-dirinit-container"
            "env" (list
              (dict "name" "PUSER_CHOWN" "value" "/config;/filescan;/valkey;/suricata-live-logs;/zeek-live-logs;/zeek-files")
-             (dict "name" "PUSER_MKDIR" "value" "/suricata-live-logs:live;/filescan:filescan;/config:zeek/intel/Mandiant,zeek/intel/MISP,zeek/intel/STIX;/zeek-live-logs:current,live/logs,processed,upload;/zeek-files:extract_files/filescan;/valkey:data")
+             (dict "name" "PUSER_MKDIR" "value" "/suricata-live-logs:live;/filescan:filescan;/config:zeek/intel/Mandiant,zeek/intel/Google,zeek/intel/MISP,zeek/intel/STIX;/zeek-live-logs:current,live/logs,processed,upload;/zeek-files:extract_files/filescan;/valkey:data")
            )
            "volumeMounts" (list
              (dict "name" "filescan-live-logs-volume" "mountPath" "/filescan")
