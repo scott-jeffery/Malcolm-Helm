@@ -67,10 +67,12 @@ Params:
 {{- $extraMounts := (.extraVolumeMounts | default (list)) -}}
 {{- $sc := .securityContext | default (dict) -}}
 {{- $mergedSc := merge (dict "runAsGroup" 0 "runAsUser" 0) $sc -}}
+{{- $resourcesSubkey := ternary "cache" "valkey" (eq $mode "cache") -}}
 
 - name: {{ $name }}
   image: "{{ include "malcolm.valkey.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" "valkey_env" "subkey" $resourcesSubkey "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:

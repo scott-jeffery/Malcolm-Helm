@@ -36,10 +36,12 @@ Params:
 {{- $sc := .securityContext | default (dict) -}}
 {{- $mergedSc := merge (dict "runAsGroup" 0 "runAsUser" 0) $sc -}}
 {{- $mounts := .volumeMounts | default (list) -}}
+{{- $resourcesSection := .resourcesSection | default "arkime_env" -}}
 
 - name: {{ $name }}
   image: "{{ include "malcolm.arkime.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" $resourcesSection "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:

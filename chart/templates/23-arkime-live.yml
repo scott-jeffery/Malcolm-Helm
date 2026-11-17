@@ -27,6 +27,7 @@ spec:
       {{ include "malcolm.arkime.container" (dict
            "root" $
            "name" "arkime-live-container"
+           "resourcesSection" "arkime_live"
            "securityContext" (dict
              "capabilities" (dict "add" (list "IPC_LOCK" "SYS_RESOURCE" "NET_ADMIN" "NET_RAW" "SYS_NICE"))
            )

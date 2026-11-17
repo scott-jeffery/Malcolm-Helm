@@ -35,6 +35,7 @@ spec:
       - name: upload-container
         image: "{{ $upload_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "upload_common_env") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

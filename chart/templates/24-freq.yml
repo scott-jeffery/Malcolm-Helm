@@ -31,6 +31,7 @@ spec:
       - name: freq-container
         image: "{{ $freq_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "freq") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

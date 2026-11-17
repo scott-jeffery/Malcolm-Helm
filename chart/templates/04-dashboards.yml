@@ -32,6 +32,7 @@ spec:
       - name: dashboards-container
         image: "{{ $dashboards_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "dashboards") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

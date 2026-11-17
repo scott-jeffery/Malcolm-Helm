@@ -2,6 +2,37 @@
 # Use this to easily switch between lightweight development deployments and full production configurations.
 is_production: false
 
+# Compute resources (CPU/memory) requested from Kubernetes are configured per component,
+#   in a `resources:` block within that component's `development:`/`production:` sections
+#   (e.g. `logstash.production.resources`, `opensearch.development.resources`). They mirror
+#   `config/kubernetes-container-resources.yml` from Malcolm's vanilla Kubernetes manifest
+#   deployment, applied there with `start --inject-resources`, so that the two deployment
+#   methods request comparable resources.
+#
+# Without these, the scheduler has no idea what a Malcolm pod needs: every pod is
+#   "BestEffort" QoS, counts as zero against a node's allocatable capacity no matter what it
+#   actually consumes, and is the first thing the kubelet evicts under memory pressure.
+#
+# Only requests are specified, not limits. A CPU limit throttles the container once reached,
+#   which for live capture (Suricata, Zeek, Arkime) means dropped packets rather than slower
+#   processing. Limits can still be added per component if wanted, e.g.:
+#
+#     netbox:
+#       production:
+#         resources:
+#           requests:
+#             cpu: "1"
+#             memory: 2Gi
+#           limits:
+#             memory: 4Gi
+#
+# Setting a component's `resources:` to `{}` (or removing it) renders no `resources:` block at
+#   all for that container, restoring the unaccounted-for behavior for just that component.
+#
+# For components with a `java_memory` setting (OpenSearch and Logstash), the memory request is
+#   automatically raised to the JVM heap size when that heap is larger than the request, since
+#   `-Xms` pre-allocates the heap and a smaller request would guarantee the pod exceeds it.
+
 # Enable Kubernetes NetworkPolicy resources to control pod ingress and egress traffic.
 # When `true`, the chart creates default policies that restrict external access while allowing
 # internal communication (and optional exceptions for Istio or external Elasticsearch).
@@ -200,12 +231,37 @@ auth:
   role_capture_service: "capture_service"
 
 # Malcolm's API service (templates/08-api.yml)
+# The init containers that create Malcolm's directory trees on the persistent volumes
+#   before the main containers start. One runs in nearly every pod, and they are all the
+#   same short-lived image, so they share a single set of values here.
+dirinit:
+  development:
+    resources:
+      requests:
+        cpu: "0.25"
+        memory: 128Mi
+  production:
+    resources:
+      requests:
+        cpu: "0.25"
+        memory: 128Mi
+
 api:
   # gunicorn concurrency for the API server. Prior to 26.10.0 gunicorn ran with its
   #   single-worker, single-thread default, so one slow OpenSearch query blocked every
   #   other API request (including the Dashboards/Arkime panels that call the API).
   gunicorn_workers: 2
   gunicorn_threads: 4
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 512Mi
+  production:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 512Mi
 
 opensearch:
   enabled: true
@@ -239,9 +295,22 @@ opensearch:
   development:
     java_memory: -Xmx10g -Xms10g -Xss256k
     cluster_max_shards_per_node: 1000
+    # Compute resources requested from Kubernetes for the opensearch container.
+    #   See the `resources` note at the top of this file. Note that the memory
+    #   request is raised to the `java_memory` heap size above when that is larger,
+    #   so this renders as 10240Mi rather than 4Gi.
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
   production:
     java_memory: -Xmx32g -Xms32g -Xss256k
     cluster_max_shards_per_node: 2500
+    # Renders as 32768Mi, raised to match the `java_memory` heap above.
+    resources:
+      requests:
+        cpu: "4"
+        memory: 24Gi
   singleNode: true
   # When singleNode: false, number of OpenSearch pods/nodes in the StatefulSet.
   # This is cluster size, not index shard replication.
@@ -392,6 +461,56 @@ beats_common:
   #   Beats-based forwarders from which it will accept logs
   ssl: "false"
 
+# The freq service, which calculates the entropy scores used by lookup_common below
+freq:
+  development:
+    resources:
+      requests:
+        cpu: "0.25"
+        memory: 256Mi
+  production:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 512Mi
+
+# The htadmin service, which manages the HTTP basic auth credentials configured under auth:
+htadmin:
+  development:
+    resources:
+      requests:
+        cpu: "0.25"
+        memory: 256Mi
+  production:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 512Mi
+
+# Strelka's frontend and manager services. The backend scanner processes are sized under
+#   filescan_env, alongside the `backend_procs` setting that controls how many of them run.
+strelka:
+  development:
+    resources:
+      frontend:
+        requests:
+          cpu: "0.25"
+          memory: 256Mi
+      manager:
+        requests:
+          cpu: "0.25"
+          memory: 256Mi
+  production:
+    resources:
+      frontend:
+        requests:
+          cpu: "0.5"
+          memory: 512Mi
+      manager:
+        requests:
+          cpu: "0.5"
+          memory: 512Mi
+
 lookup_common:
   # Whether or not domain names (from DNS queries and SSL server names) will be assigned entropy scores
   #   as calculated by freq
@@ -470,6 +589,11 @@ logstash:
     batch_delay: 50
     batch_size: 75
     ordered: false
+    # Raised to 3072Mi to match the `java_memory` heap above
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
 
   production:
     java_memory: -Xmx16g -Xms16g -Xss2048k
@@ -477,6 +601,11 @@ logstash:
     batch_delay: 50
     batch_size: 75
     ordered: false
+    # Raised to 16384Mi to match the `java_memory` heap above
+    resources:
+      requests:
+        cpu: "4"
+        memory: 4Gi
 
 netbox:
   # Mode of NetBox integration. Options:
@@ -558,6 +687,16 @@ netbox:
   redis_cache_ssl: "false"
   redis_insecure_skip_tls_verify: "false"
   redis_cache_insecure_skip_tls_verify: "false"
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
 
 postgres:
   enabled: true
@@ -586,6 +725,16 @@ postgres:
   # - pgpool-secret:
   #     adminUsername: netbox-pgpool
   #     adminPassword: ""
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 3Gi
 
 storage:
   # Default storage class is defined by `storage_class_name` above.
@@ -755,6 +904,10 @@ suricata_live:
     eve_threaded: "true"
     eve_rotate_interval: "1h"
 
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
   production:
     af_packet_iface_threads: 32
     # Default is calculated threads * max_pending_packets (assumes max_pending_packets=1024)
@@ -764,6 +917,24 @@ suricata_live:
     max_pending_packets: 30000
     eve_threaded: "true"
     eve_rotate_interval: "1h"
+
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
+# OpenSearch Dashboards (the web UI itself; see dashboards_helper_env below for the
+#   companion helper service that manages index templates and index pruning)
+dashboards:
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
 
 dashboards_helper_env:
   # The maximum cumulative size of OpenSearch indices containing network traffic metadata
@@ -806,6 +977,16 @@ dashboards_helper_env:
   # Parameters for the OpenSearch repository used for index snapshots
   ism_snapshot_compressed: false
   ism_snapshot_repo: logs
+  development:
+    resources:
+      requests:
+        cpu: "0.25"
+        memory: 256Mi
+  production:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 512Mi
 
 suricata_offline:
   # Whether or not Suricata should analyze uploaded PCAP files
@@ -814,12 +995,20 @@ suricata_offline:
     # The number of threads per Suricata process (0 means "default behavior")
     suricata_auto_analyze_pcap_threads: 0
     suricata_auto_analyze_pcap_processes: 1
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 2Gi
   production:
     suricata_auto_analyze_pcap_threads: 0
     suricata_auto_analyze_pcap_processes: 10
 
 # Zeek live is enabled by default and will listen on `pcap_iface` defined under `pcap_capture_env`
 # If disabled, PCAPs can still be uploaded using the Malcolm offline upload functionality.
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
 zeek_live:
   # Set ZEEK_DISABLE_STATS to false or blank to generate stats.log and capture_loss.log
   zeek_disable_stats: ""
@@ -854,6 +1043,10 @@ zeek_live:
     zeek_af_packet_buffer_size: "67108864"
     zeek_pin_cpus_worker_1: ""
 
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
   production:
     zeek_lb_procs_worker_default: "8"
     zeek_lb_procs: "32"
@@ -866,6 +1059,10 @@ zeek_live:
 # Only affects the Zeek offline deployment
 # NOTE: the zeek_intel_refresh_on_startup and zeek_intel_refresh_cron_expression 
 #       is also applied to the zeek remote live sensors.
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
 zeek_offline:
   # Whether or not Zeek should analyze uploaded PCAP files
   auto_analyze_pcap_files: "true"
@@ -884,9 +1081,17 @@ zeek_offline:
   # Number of Zeek processes analyzing uploaded PCAPs concurrently
   development:
     zeek_auto_analyze_pcap_threads: 1
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 2Gi
   production:
     zeek_auto_analyze_pcap_threads: 3
 
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
 filescan_env:
   # Set to true to disable file scanning with Strelka
   disable: false
@@ -932,6 +1137,15 @@ filescan_env:
     clamd_max_queue: "200"
     # Maximum length the queue of pending connections may grow to for clamd (MaxConnectionQueueLength)
     clamd_max_conn_queue: "400"
+    resources:
+      filescan:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+      strelka_backend:
+        requests:
+          cpu: "1"
+          memory: 2Gi
   production:
     extracted_file_prune_threshold_max_size: 1TB
     extracted_file_prune_threshold_total_disk_usage_percent: 0
@@ -942,6 +1156,15 @@ filescan_env:
     clamd_max_conn_queue: "400"
   # Enabled scanners, see https://idaholab.github.io/Malcolm/docs/file-scanning.html
   # and https://target.github.io/strelka/#/?id=scanner-list
+    resources:
+      filescan:
+        requests:
+          cpu: "2"
+          memory: 4Gi
+      strelka_backend:
+        requests:
+          cpu: "2"
+          memory: 4Gi
   scanners:
     - 'default'
 
@@ -969,6 +1192,15 @@ valkey_env:
     cache_max_memory_policy: allkeys-lru
     # the minimum size the append-only file must reach before an automatic AOF rewrite is triggered
     auto_aof_rewrite_min_size: 64mb
+    resources:
+      valkey:
+        requests:
+          cpu: "0.25"
+          memory: 512Mi
+      cache:
+        requests:
+          cpu: "0.25"
+          memory: 512Mi
   production:
     max_memory: 0
     max_memory_policy: allkeys-lru
@@ -977,6 +1209,15 @@ valkey_env:
     auto_aof_rewrite_min_size: 64mb
 
 # Affects all Zeek deployments (live and offline)
+    resources:
+      valkey:
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+      cache:
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
 zeek_env:
   # Determines which files are extracted from network traffic by Zeek
   # `none`       : no file extraction
@@ -1153,6 +1394,10 @@ arkime_env:
     # Enable or disable hot/warm index design (non-session data in warm index)
     index_management_hot_warm_enabled: "false"
 
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
   production:
     free_space_g: "5%"
     rotate_index: daily
@@ -1169,6 +1414,10 @@ arkime_env:
     index_management_segments: "1"
     index_management_hot_warm_enabled: "false"
 
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
 arkime_live:
   enabled: true
   hostpath: /var/lib/malcolm/arkime-pcap
@@ -1197,6 +1446,10 @@ arkime_live:
     arkime_tpacketv3_num_threads: "2"
     #The block size in bytes used for reads from each interface. There are 120 blocks per interface.
     arkime_tpacketv3_block_size: "8388608"
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
   production:
     # See: https://arkime.com/settings#high-performance-settings
     arkime_compression_type: none
@@ -1209,6 +1462,10 @@ arkime_live:
     arkime_tpacketv3_block_size: "8388608"
 
   # Arkime live runs as a DaemonSet but schedules only on Kubernetes nodes with the following label
+    resources:
+      requests:
+        cpu: "2"
+        memory: 4Gi
   nodeSelector:
     cnaps.io/arkime-capture: "true"
 
@@ -1224,6 +1481,16 @@ arkime_offline:
   expose_wise_gui: "true"
   # Controls whether the WISE configuration GUI is read-only (false) or editable (true)
   allow_wise_gui_config: "false"
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
 
 pcap_live:
   enabled: false
@@ -1233,6 +1500,16 @@ pcap_live:
     cnaps.io/pcap-capture: "true"
 
 # Sets environment variables across multiple live capture applications (e.g., PCAP capture, Zeek, Suricata)
+  development:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "2"
+        memory: 2Gi
 pcap_capture_env:
   # Specifies local network interface(s) for local packet capture if PCAP_ENABLE_NETSNIFF,
   #   PCAP_ENABLE_TCPDUMP, ZEEK_LIVE_CAPTURE or SURICATA_LIVE_CAPTURE are 'true
@@ -1273,6 +1550,26 @@ pcap_capture_env:
   pcap_iface_stats_cron_expression: ""
 
 # Shared settings across multiple live capture applications (e.g., PCAP capture, Zeek, Suricata)
+  development:
+    resources:
+      capture:
+        requests:
+          cpu: "1"
+          memory: 1Gi
+      monitor:
+        requests:
+          cpu: "0.25"
+          memory: 512Mi
+  production:
+    resources:
+      capture:
+        requests:
+          cpu: "2"
+          memory: 2Gi
+      monitor:
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
 live_capture:
   tolerations: []
 
@@ -1294,6 +1591,16 @@ upload_common_env:
   safe_extract_max_bytes: "4294967296"
 
 # Filebeat log monitoring
+  development:
+    resources:
+      requests:
+        cpu: "0.25"
+        memory: 512Mi
+  production:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
 filebeat:
   # filebeat parameters used for monitoring log files containing network traffic metadata
   #   (see https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-input-log.html)
@@ -1387,6 +1694,16 @@ filebeat:
               values: ["true"]
 
 # Sets the GID and UID for unprivileged processes in all containers
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
 process_env:
   # containers will run processes as unprivileged user with UID:GID
   pgid: 1000
@@ -1457,6 +1774,16 @@ keycloak:
   kc_bootstrap_admin_password: "vagrant"
 
 # These NGINX settings apply to Malcolm's internal proxy, *not* the ingress defined above
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 1Gi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
 nginx:
   # Log level for NGINX's error log
   log_level: ""
@@ -1495,6 +1822,16 @@ nginx:
 # instrumented for code coverage using the Python coverage library. NOTE: The sidecar's image
 # must include the coverage package and should start coverage collection when any python process
 # is started.
+  development:
+    resources:
+      requests:
+        cpu: "0.5"
+        memory: 512Mi
+  production:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 1Gi
 enable_coverage: false
 
 # If coverage is enabled, this value is the contents of the .coveragerc file used for code

@@ -44,6 +44,7 @@ Params:
 - name: {{ $name }}
   image: "{{ include "malcolm.pcapMonitor.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" "pcap_capture_env" "subkey" "monitor" "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:

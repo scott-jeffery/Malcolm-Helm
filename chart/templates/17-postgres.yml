@@ -80,6 +80,7 @@ spec:
       - name: postgres-container
         image: "{{ $postgres_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "postgres") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

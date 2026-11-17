@@ -31,6 +31,7 @@ spec:
       - name: htadmin-container
         image: "{{ $htadmin_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "htadmin") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

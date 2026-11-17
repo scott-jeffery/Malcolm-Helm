@@ -58,10 +58,12 @@ Params:
 {{- $sc := .securityContext | default (dict) -}}
 {{- $mergedSc := merge (dict "runAsGroup" 0 "runAsUser" 0) $sc -}}
 {{- $baseMounts := .baseVolumeMounts | default (list) -}}
+{{- $resourcesSection := printf "suricata_%s" $mode -}}
 
 - name: {{ $name }}
   image: "{{ include "malcolm.suricata.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" $resourcesSection "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:

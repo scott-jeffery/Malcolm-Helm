@@ -42,6 +42,7 @@ Params:
 - name: {{ $name }}
   image: "{{ include "malcolm.filescan.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" "filescan_env" "subkey" "filescan" "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:

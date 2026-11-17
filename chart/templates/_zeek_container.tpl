@@ -87,10 +87,12 @@ Params:
 {{- $mergedSc := merge (dict "runAsGroup" 0 "runAsUser" 0) $sc -}}
 {{- $env := .env | default (list) -}}
 {{- $baseMounts := .baseVolumeMounts | default (list) -}}
+{{- $resourcesSection := printf "zeek_%s" (ternary "live" "offline" (or (eq $mode "live") (eq $mode "liveRemote"))) -}}
 
 - name: {{ $name }}
   image: "{{ include "malcolm.zeek.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" $resourcesSection "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:

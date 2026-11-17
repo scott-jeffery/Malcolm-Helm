@@ -98,6 +98,117 @@ Used for secret generation for the opensearch-curlrc Kubernetes secret
 {{- end }}
 
 
+{{/*
+Parse a JVM heap size (in whole MiB) out of a -Xmx/-Xms style options string,
+e.g. "-Xmx32g -Xms32g -Xss256k" yields 32768. Returns 0 if neither is present.
+Mirrors GetMemMegabytesFromJavaOptsLine in Malcolm's scripts/malcolm_common.py,
+which the vanilla-manifest deployment path uses for the same purpose.
+*/}}
+{{- define "malcolm.javaHeapMib" -}}
+{{- $opts := . | default "" -}}
+{{- $mib := 0 -}}
+{{- range $opt := (list "Xmx" "Xms") -}}
+  {{- if eq $mib 0 -}}
+    {{- range $match := (regexFindAll (printf "-%s[0-9]+[kKmMgG]" $opt) $opts 1) -}}
+      {{- $n := regexFind "[0-9]+" $match | atoi -}}
+      {{- $unit := regexFind "[kKmMgG]$" $match | lower -}}
+      {{- if eq $unit "g" -}}
+        {{- $mib = mul $n 1024 -}}
+      {{- else if eq $unit "m" -}}
+        {{- $mib = $n -}}
+      {{- else if eq $unit "k" -}}
+        {{- $mib = divf $n 1024 | ceil | int -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $mib -}}
+{{- end }}
+
+
+{{/*
+Convert a Kubernetes memory quantity (e.g. "512Mi", "2Gi", "1G", "1024") to
+whole MiB, for comparison against a JVM heap size. Returns 0 if unparseable.
+Mirrors ParseK8sMemoryToMib in Malcolm's scripts/malcolm_common.py.
+*/}}
+{{- define "malcolm.memoryMib" -}}
+{{- $val := . | toString | trim -}}
+{{- $digits := regexFind "^[0-9]+" $val | default "" -}}
+{{- $mib := 0 -}}
+{{- if $digits -}}
+  {{- $n := atoi $digits -}}
+  {{- $suffix := substr (len $digits | int) (len $val | int) $val -}}
+  {{- if eq $suffix "Gi" -}}
+    {{- $mib = mul $n 1024 -}}
+  {{- else if eq $suffix "Mi" -}}
+    {{- $mib = $n -}}
+  {{- else if eq $suffix "Ki" -}}
+    {{- $mib = divf $n 1024 | floor | int -}}
+  {{- else if eq $suffix "G" -}}
+    {{- $mib = divf (mul $n 1000000000) 1048576 | floor | int -}}
+  {{- else if eq $suffix "M" -}}
+    {{- $mib = divf (mul $n 1000000) 1048576 | floor | int -}}
+  {{- else -}}
+    {{- $mib = divf $n 1048576 | floor | int -}}
+  {{- end -}}
+{{- end -}}
+{{- $mib -}}
+{{- end }}
+
+
+{{/*
+Render a container's "resources:" block.
+
+Each component's resources live alongside its other tunables in values.yaml,
+under the same development:/production: blocks as settings like java_memory, e.g.
+logstash.production.resources. Pass the owning section name as "section":
+
+  {{ include "malcolm.resources" (dict "root" $ "section" "logstash") }}
+
+Resolution order:
+  1. an explicit "resources" dict passed by the caller
+  2. .Values.<section>.<development|production>.resources, selected by is_production
+  3. nothing at all
+
+Nothing is emitted when the result is empty, so that containers without a
+configured size do not get a null "resources:" key (a null key is dropped by
+kubectl apply but re-rendered by ArgoCD on every refresh, leaving the
+Application permanently OutOfSync -- the drift class addressed in #116).
+
+Where the same section configures more than one container (e.g. valkey_env covers
+both valkey and valkey-cache), "subkey" selects a nested entry:
+
+  {{ include "malcolm.resources" (dict "root" $ "section" "valkey_env" "subkey" "cache") }}
+
+If the tier block also carries a java_memory setting, the memory request is
+floored at that JVM heap size, since -Xms pre-allocates the heap and a request
+below it would guarantee the pod exceeds its own request. Malcolm's
+scripts/malcolm_kubernetes.py applies the same floor when injecting resources
+into the vanilla Kubernetes manifests.
+*/}}
+{{- define "malcolm.resources" -}}
+{{- $root := .root -}}
+{{- $tier := ternary "production" "development" $root.Values.is_production -}}
+{{- $tierBlock := (get ((get $root.Values (.section | default "")) | default dict) $tier) | default dict -}}
+{{- $resources := get $tierBlock "resources" | default dict -}}
+{{- if .subkey -}}
+  {{- $resources = get $resources .subkey | default dict -}}
+{{- end -}}
+{{- $resources = .resources | default $resources -}}
+{{- $heapMib := include "malcolm.javaHeapMib" (get $tierBlock "java_memory" | default "") | int -}}
+{{- if and (gt $heapMib 0) $resources -}}
+  {{- $requests := get $resources "requests" | default dict -}}
+  {{- if gt $heapMib (include "malcolm.memoryMib" (get $requests "memory" | default "0") | int) -}}
+    {{- $resources = set (deepCopy $resources) "requests" (set (deepCopy $requests) "memory" (printf "%dMi" $heapMib)) -}}
+  {{- end -}}
+{{- end -}}
+{{- if $resources -}}
+resources:
+{{ toYaml $resources | indent 2 }}
+{{- end -}}
+{{- end }}
+
+
 {{- define "malcolm.nodeCount" -}}
 {{- $labelKey := .Values.node_count_label.key | default "" }}
 {{- $labelValue := .Values.node_count_label.value | default "" }}

@@ -122,6 +122,7 @@ spec:
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
         stdin: false
         tty: true
+{{- include "malcolm.resources" (dict "root" $ "section" "opensearch") | nindent 8 }}
         securityContext:
           # initializes as root then drops privileges in the entrypoint
           runAsGroup: 0

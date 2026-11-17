@@ -93,6 +93,7 @@ spec:
       - name: logstash-container
         image: "{{ $logstash_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "logstash") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

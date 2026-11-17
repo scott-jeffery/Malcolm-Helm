@@ -41,6 +41,7 @@ spec:
       - name: nginx-proxy-container
         image: "{{ $nginx_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "nginx") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

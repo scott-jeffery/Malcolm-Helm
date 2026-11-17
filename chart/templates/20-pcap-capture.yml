@@ -27,6 +27,7 @@ spec:
       - name: pcap-capture-container
         image: "{{ $pcap_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "pcap_capture_env" "subkey" "capture") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

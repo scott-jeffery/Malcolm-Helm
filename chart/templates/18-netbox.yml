@@ -38,6 +38,7 @@ spec:
       - name: netbox-container
         image: "{{ $netbox_image }}"
         imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $ "section" "netbox") | nindent 8 }}
         stdin: false
         tty: true
         securityContext:

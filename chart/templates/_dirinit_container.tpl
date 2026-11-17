@@ -30,6 +30,7 @@ Params:
 - name: {{ $name }}
   image: "{{ include "malcolm.dirinit.image" (dict "root" $root) }}"
   imagePullPolicy: "{{ $root.Values.image.pullPolicy }}"
+{{- include "malcolm.resources" (dict "root" $root "section" "dirinit" "resources" .resources) | nindent 2 }}
   stdin: false
   tty: true
   securityContext:
